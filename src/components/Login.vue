@@ -17,6 +17,8 @@
     </Form>
 </template>
 <script>
+    import axios from 'axios';
+    import md5 from 'md5';
     export default {
         data () {
             return {
@@ -30,7 +32,7 @@
                     ],
                     password: [
                         { required: true, message: 'Please fill in the password.', trigger: 'blur' },
-                        { type: 'string', min: 6, message: 'The password length cannot be less than 6 bits', trigger: 'blur' }
+                        { type: 'string', min: 4, message: 'The password length cannot be less than 4 bits', trigger: 'blur' }
                     ]
                 }
             }
@@ -43,7 +45,32 @@
                     } else {
                         this.$Message.error('Fail!');
                     }
-                })
+                });
+
+                var pass = md5(this.formInline.password);
+                axios.get(BACKEND_URL+'/token_generation',{
+                  params: {
+                    'username': this.formInline.user,
+                    'password': pass
+                  }
+                }).then(
+                    function(response) {
+                      if (response.data.authorized == "True") {
+                        window.localStorage.setItem('row_token', response.data.token);
+                        axios.get(BACKEND_URL+'/listTables', {
+                          headers: {
+                            'Authorization' : response.data.token
+                          }
+                        }).then(
+                          function(response) {
+                              console.log(response);
+                          }
+                        );
+                      } else {
+                        alert('Incorred Username or Password');
+                      }
+                    }
+                 );
             }
         }
     }
