@@ -39,14 +39,14 @@
         },
         methods: {
             handleSubmit(name) {
-                this.$refs[name].validate((valid) => {
-                    if (valid) {
-                        this.$Message.success('Success!');
-                    } else {
-                        this.$Message.error('Fail!');
-                    }
-                });
-
+                //this.$refs[name].validate((valid) => {
+                //    if (valid) {
+                //        this.$Message.success('Success!');
+                //    } else {
+                //        this.$Message.error('Fail!');
+                //    }
+                //});
+                let self = this;
                 var pass = md5(this.formInline.password);
                 axios.get(BACKEND_URL+'/token_generation',{
                   params: {
@@ -57,15 +57,7 @@
                     function(response) {
                       if (response.data.authorized == "True") {
                         window.localStorage.setItem('row_token', response.data.token);
-                        axios.get(BACKEND_URL+'/listTables', {
-                          headers: {
-                            'Authorization' : response.data.token
-                          }
-                        }).then(
-                          function(response) {
-                              console.log(response);
-                          }
-                        );
+                        self.$router.push('/home');
                       } else {
                         alert('Incorred Username or Password');
                       }

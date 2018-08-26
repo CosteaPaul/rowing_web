@@ -2,6 +2,11 @@ import hug
 import jwt
 import db
 
+@hug.response_middleware()
+def process_data(request, response, resource):
+      response.set_header('Access-Control-Allow-Origin', '*')
+      response.set_header('Access-Control-Allow-Headers', 'Authorization')
+
 def token_verify(token):
     secret_key = 'This_should_be_changed'
     try:
