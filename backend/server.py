@@ -27,6 +27,11 @@ def token_gen_call(username, password):
         return {"authorized": "True", "token" : jwt.encode({'user': username, 'expire': 'never'}, secret_key, algorithm='HS256')}
     return {"authorized": "False"}
 
+@hug.get('/getBoats'), requires=token_key_authentication)
+def getBoats():
+    res = db.listBoats()
+    return(res)
+
 @hug.get('/listTables', requires=token_key_authentication)
 def listTables():
     res = db.listTables()

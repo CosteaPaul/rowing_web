@@ -12,6 +12,24 @@ def getConnection():
                               database='rowing')
     return(cnx)
 
+def listBoats():
+    conn = getConnection()
+    curs = conn.cursor()
+
+    curs.execute('SELECT Name,Seats,InUse  FROM boats WHERE Available=1')
+    dbres = curs.fetchall()
+    res = {}
+    res['inhouse'] = []
+    res['onriver'] = []
+    for boat in dbres:
+        b = {'name':boat[0],'seats':boat[1]}
+        if boat[2] != 0:
+            res['onriver'].append(b)
+        else:
+            res['inhouse'].append(b)
+    conn.close()
+    return(res)
+
 def listTables():
     conn = getConnection()
     curs = conn.cursor()
