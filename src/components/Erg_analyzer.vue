@@ -2,7 +2,7 @@
   <div class='layout'>
       <Button type="primary" @click="capture">Capture</Button>
       <video height='600' width='800' id='videoInput'/>
-      <canvas id='outputCanvas'/>
+      <canvas id='outputCanvas' @mousedown="startSelectRect" @mouseup="endSelectRect"/>
   </div>
 </template>
 
@@ -20,53 +20,16 @@ export default {
       captured_curve: [],
       cap: 0,
       oldGray: 0,
+      refFrame: 0,
       p0: 0
       }
     },
-    mounted() {
-      const cv = require('opencv.js');
+    mounted() {//Just start video play
       let video = document.getElementById('videoInput');
-      var me = this;
       navigator.mediaDevices.getUserMedia({ video: true, audio: false })
         .then(function(stream) {
             video.srcObject = stream;
             video.play();
-            let cap = new cv.VideoCapture(video);
-            console.log(video.width);
-            console.log(video.height);
-            // parameters for ShiTomasi corner detection
-            let [maxCorners, qualityLevel, minDistance, blockSize] = [30, 0.3, 7, 7];
-
-            // create some random colors
-            let color = [];
-            for (let i = 0; i < maxCorners; i++) {
-                color.push(new cv.Scalar(parseInt(Math.random()*255), parseInt(Math.random()*255),
-                                         parseInt(Math.random()*255), 255));
-            }
-
-            // take first frame and find corners in it
-            let oldFrame = new cv.Mat(video.height, video.width, cv.CV_8UC4);
-            cap.read(oldFrame);
-            let oldGray = new cv.Mat();
-            cv.cvtColor(oldFrame, oldGray, cv.COLOR_RGB2GRAY);
-            let p0 = new cv.Mat();
-            let none = new cv.Mat();
-            cv.goodFeaturesToTrack(oldGray, p0, maxCorners, qualityLevel, minDistance, none, blockSize);
-
-            cv.imshow('outputCanvas', oldGray);
-            console.log(p0);
-
-            // Create a mask image for drawing purposes
-            let zeroEle = new cv.Scalar(0, 0, 0, 255);
-            let mask = new cv.Mat(oldFrame.rows, oldFrame.cols, oldFrame.type(), zeroEle);
-
-            let frame = new cv.Mat(video.height, video.width, cv.CV_8UC4);
-            let frameGray = new cv.Mat();
-            let p1 = new cv.Mat();
-            let st = new cv.Mat();
-            let err = new cv.Mat();
-
-            setTimeout(me.processVideo, 0);
         })
         .catch(function(err) {
             console.log("An error occurred! " + err);
@@ -75,17 +38,34 @@ export default {
 
     },
     methods: {
+      startSelectRect: function (e){
+        console.log(e.offsetX)
+      },
+      endSelectRect: function(e){//For now, just trigger the detection of the original points here
+        const cv = require('opencv.js');
+        let video = document.getElementById('videoInput');
+        // parameters for ShiTomasi corner detection
+        let [maxCorners, qualityLevel, minDistance, blockSize] = [30, 0.3, 7, 7];
+
+        // take first frame and find corners in it
+        this.oldGray = new cv.Mat();
+        cv.cvtColor(this.refFrame, this.oldGray, cv.COLOR_RGB2GRAY);
+        this.p0 = new cv.Mat();
+        let none = new cv.Mat();
+        cv.goodFeaturesToTrack(this.oldGray, this.p0, maxCorners, qualityLevel, minDistance, none, blockSize);
+
+        setTimeout(this.processVideo, 0);
+      },
       capture: function() {
         const cv = require('opencv.js');
         let video = document.getElementById('videoInput');
-        let cap = new cv.VideoCapture(video);
-        let begin = Date.now();
-        let frame = new cv.Mat(video.height, video.width, cv.CV_8UC4);
-        cap.read(frame);
-        cv.imshow('outputCanvas', frame);
+        this.cap = new cv.VideoCapture(video);
+        this.refFrame = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+        this.cap.read(this.refFrame);
+        cv.imshow('outputCanvas', this.refFrame);
       },
       processVideo: function() {
-          try {
+          //try {
             const cv = require('opencv.js');
             let begin = Date.now();
             let video = document.getElementById('videoInput');
@@ -106,6 +86,16 @@ export default {
             // calculate optical flow
             cv.calcOpticalFlowPyrLK(this.oldGray, frameGray, this.p0, p1, st, err, winSize, maxLevel, criteria);
 
+            // parameters for ShiTomasi corner detection
+            let [maxCorners, qualityLevel, minDistance, blockSize] = [10, 0.3, 7, 7];
+
+            // create some random colors
+            let color = [];
+            for (let i = 0; i < maxCorners; i++) {
+                color.push(new cv.Scalar(parseInt(Math.random()*255), parseInt(Math.random()*255),
+                                         parseInt(Math.random()*255), 255));
+            }
+
             // select good points
             let goodNew = [];
             let goodOld = [];
@@ -116,9 +106,13 @@ export default {
                 }
             }
 
+            // Create a mask image for drawing purposes
+            let zeroEle = new cv.Scalar(0, 0, 0, 255);
+            let mask = new cv.Mat(this.refFrame.rows, this.refFrame.cols, this.refFrame.type(), zeroEle);
+
             // draw the tracks
-            for (let i = 0; i < goodNew.length; i++) {
-                cv.line(mask, goodNew[i], goodOld[i], color[i], 2);
+            for (let i = 0; i < goodNew.length & i < maxCorners; i++) {
+            //    cv.line(mask, goodNew[i], goodOld[i], color[i], 2);
                 cv.circle(frame, goodNew[i], 5, color[i], -1);
             }
             cv.add(frame, mask, frame);
@@ -135,11 +129,11 @@ export default {
             }
 
             // schedule the next one.
-            let delay = 1000/FPS - (Date.now() - begin);
-            setTimeout(this.processVideo, delay);
-          } catch (err) {
-              console.log(err);
-          }
+            //let delay = 1000/FPS - (Date.now() - begin);
+            setTimeout(this.processVideo, 50);
+          //} catch (err) {
+          //    console.log(err);
+          //}
       }
     }
 }
